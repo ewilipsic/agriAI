@@ -1,0 +1,19 @@
+Aproach 1)
+Auto encoder(400 images) + classifier -> 
+    Classifier : 
+        40% Val accuracy, 
+        1.25 training loss, 
+        52% training accuracy 
+
+Aproach 2)
+SASSL encoder(2000 images)
+
+    SASSL 50 epochs
+        Epoch 50/100 Summary:
+        Average Loss: 0.8024
+        Learning Rate: 0.000051
+
+    Classifier : 
+        48.75% Val accuracy, 
+        0.69 training loss, 
+        76.36% training accuracy 
