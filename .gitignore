@@ -14,3 +14,10 @@ sentinel2_swinb_si_ms.pth
 satlas/sentinel2_swinb_portable.pth
 satlas/satlas_sassl_classification_checkpoints9
 /s2a.tar
+/SASSL_checkpoints
+/SASSL_classification_checkpoints
+/checkpoints
+/classification_checkpoints
+/sanity_classification_checkpoints
+/s2a
+
