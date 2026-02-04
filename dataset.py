@@ -13,7 +13,16 @@ from tqdm import tqdm
 class Sentinel2InpaintingDataset(Dataset):
     """Dataset for Sentinel-2 multi-spectral inpainting"""
     
+
     def __init__(self, root_dir, mask_type='random',target_size=None,limit_samples = None,format = "default"):
+        """
+        Args:
+            root_dir: Path to s2a folder (e.g., 'D:/s2a')
+            mask_type: 'random', 'center', or 'irregular'
+            augment: Apply random flips/rotations
+            target_size: (H, W) to resize all images, or None to use 10m resolution
+        """
+
         self.root_dir = root_dir
         self.mask_type = mask_type
         self.target_size = target_size
