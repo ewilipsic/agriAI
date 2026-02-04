@@ -1,16 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
-import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import os
-import random
 from torchvision.models import vit_b_16, ViT_B_16_Weights
 import torchvision.transforms.functional as TF
 import torchvision.transforms as T
-
 
 class RandomRotation90(nn.Module):
     """Randomly rotate image by 0, 90, 180, or 270 degrees."""
