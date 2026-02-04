@@ -13,7 +13,7 @@ from tqdm import tqdm
 class Sentinel2InpaintingDataset(Dataset):
     """Dataset for Sentinel-2 multi-spectral inpainting"""
     
-    def __init__(self, root_dir, mask_type='random', augment=False, target_size=None,limit_samples = None):
+    def __init__(self, root_dir, mask_type='random', augment=False, target_size=None, limit_samples=None):
         """
         Args:
             root_dir: Path to s2a folder (e.g., 'D:/s2a')
