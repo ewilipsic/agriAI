@@ -1,0 +1,20 @@
+[project]
+name = "icpr-2026-beyond-visible-spectrum"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ipykernel>=6.29.5",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.1",
+    "numpy>=2.2.4",
+    "opencv-python>=4.13.0.90",
+    "pandas>=2.2.3",
+    "pillow>=11.1.0",
+    "scikit-learn>=1.6.1",
+    "seaborn>=0.13.2",
+    "tifffile>=2026.1.28",
+    "torchvision>=0.21.0",
+    "tqdm>=4.67.1",
+]
