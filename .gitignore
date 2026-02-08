@@ -21,4 +21,5 @@ satlas/satlas_sassl_classification_checkpoints9
 /classification_checkpoints
 /sanity_classification_checkpoints
 /s2a
-
+satlas/my_model.pth
+satlas/sentinel2_swinb_portable.pth
