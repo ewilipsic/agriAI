@@ -13,11 +13,12 @@ from tqdm import tqdm
 class Sentinel2InpaintingDataset(Dataset):
     """Dataset for Sentinel-2 multi-spectral inpainting"""
     
-    def __init__(self, root_dir, mask_type='random',target_size=None,limit_samples = None,format = "default"):
+    def __init__(self, root_dir, mask_type='random',target_size=None,limit_samples = None,format = "default",channels = 9):
         self.root_dir = root_dir
         self.mask_type = mask_type
         self.target_size = target_size
         self.format = format
+        self.channels = channels
 
         # Band names in order (12 bands total)
         self.bands = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']
@@ -152,14 +153,16 @@ class Sentinel2InpaintingDataset(Dataset):
             img = self.load_multispectral_image(band_paths)
             img = self.normalize_satlas(img)
 
-            self.bands = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']
-            c9 = torch.from_numpy(img[(3,2,1,4,5,6,7,10,11),:,:])
-            c12 = torch.from_numpy(img[(3,2,1,4,5,6,7,10,11,0,8,9),:,:])
+            # self.bands = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12']
 
-            return {
-                'c9': c9,      
-                'c12': c12,
-            }
+            if(self.channels == 9):
+                c9_indices = [3,2,1,4,5,6,7,10,11]
+                c9 = torch.from_numpy(np.ascontiguousarray(img[c9_indices,:,:])).float()
+                return {'c9':c9}
+            
+            c12_indices = [3,2,1,4,5,6,7,10,11,0,8,9]
+            c12 = torch.from_numpy(np.ascontiguousarray(img[c12_indices,:,:])).float()
+            return {'c12': c12,}
 
 
         if (self.format == "default"): 

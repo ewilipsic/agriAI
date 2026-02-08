@@ -17,3 +17,11 @@ SASSL encoder(2000 images)
         48.75% Val accuracy, 
         0.69 training loss, 
         76.36% training accuracy 
+
+Approach 3) Satlas Swin
+
+    Baseline : 
+        75% Val
+
+    Encoder (4000 images) : 
+        
