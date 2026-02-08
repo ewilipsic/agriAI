@@ -25,3 +25,5 @@ satlas/satlas_sassl_classification_checkpoints9
 /s2a
 satlas/my_model.pth
 satlas/sentinel2_swinb_portable.pth
+/s2a.tar
+

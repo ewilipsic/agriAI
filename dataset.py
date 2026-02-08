@@ -15,6 +15,8 @@ class Sentinel2InpaintingDataset(Dataset):
     
 
     def __init__(self, root_dir, mask_type='random',target_size=None,limit_samples = None,format = "default"):
+
+
         """
         Args:
             root_dir: Path to s2a folder (e.g., 'D:/s2a')
