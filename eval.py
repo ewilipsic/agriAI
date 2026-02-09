@@ -121,6 +121,6 @@ class EvalDataset(Dataset):
             f.write("Id,Category\n")
             
             for timestamp, pred in zip(self.timestamps, predictions):
-                f.write(f"{timestamp},{pred}\n")
+                f.write(f"{timestamp},{class_map[pred]}\n")
 
         print(f"Successfully wrote {len(predictions)} predictions.")
