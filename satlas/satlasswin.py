@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 import satlaspretrain_models
 import torch
+from satlaspretrain_models import Model
 
 class SatlasSwin(nn.Module):
     def __init__(self, channels = 9):
         super().__init__()
         def load_sentinel2_model(checkpoint_path, device='cuda'):
-            from satlaspretrain_models import Model
 
             checkpoint = torch.load(checkpoint_path, map_location=device , weights_only=False)
             arch = checkpoint['architecture']
