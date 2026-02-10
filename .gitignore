@@ -2,7 +2,7 @@
 /kaggle
 /ICPR02
 /archive
-/__pycache__
+**/__pycache__
 sassl/SASSL_checkpoints
 sassl/SASSL_classification_checkpoints
 autoencoder/checkpoints
