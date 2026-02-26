@@ -30,4 +30,5 @@ satlas/rph_blast_classifier
 satlas/rust_aphid_classifier
 satlas/satlas_ensemble_classification_checkpoints9
 /s2a.tar
-
+satlas/satlas_extracter_c9
+satlas/satlas_xgboostc9
