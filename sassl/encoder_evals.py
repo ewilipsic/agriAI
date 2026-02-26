@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
+from sklearn.metrics import silhouette_score
 
 def evaluate_and_plot_k(val_outputs, val_labels, k_range):
     """
@@ -103,4 +104,6 @@ def evaluate_and_plot_k(val_outputs, val_labels, k_range):
     plt.tight_layout()
     plt.show()
 
-    return best_k, best_accuracy, best_confusion
+
+
+    return best_k, best_accuracy, best_confusion, silhouette_score(val_outputs,val_labels)

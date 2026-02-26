@@ -9,9 +9,10 @@ from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 from scipy.ndimage import zoom
+
+import random
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader, random_split
-
 
 #class ClassificationDatasetAugmented(Dataset):
 #    def __init__(self, root_dir, mask_type='random', augment=False, target_size=None, min_samples_per_class=None):
@@ -205,6 +206,8 @@ class ClassificationDataset(Dataset):
             'B5': 20, 'B6': 20, 'B7': 20, 'B8': 10,
             'B8A': 20, 'B9': 60, 'B11': 20, 'B12': 20
         }
+
+        idx_from_label = {'RPH':0, 'Blast':1, 'Rust':2, 'Aphid':3}
         
         print("Loading dataset into memory...")
 
@@ -224,8 +227,8 @@ class ClassificationDataset(Dataset):
                 if all(os.path.exists(p) for p in band_paths.values()):
                     img = self.load_multispectral_image(band_paths)
                     img = self.normalize_satlas(img)
-                    self.samples.append((img, label))
-                    self.samples_by_class[label].append((img, label))
+                    self.samples.append([img, idx_from_label[label]])
+                    self.samples_by_class[label].append([img, idx_from_label[label]])
         
         print(f"Found {len(self.samples)} samples with all 12 bands")
     
@@ -287,27 +290,29 @@ class ClassificationDataset(Dataset):
     def __getitem__(self, idx):
         img, label = self.samples[idx]
         c9 = img[(3,2,1,4,5,6,7,10,11),:,:]
-        c12 = img
+        c12 = img[(3,2,1,4,5,6,7,10,11,0,8,9),:,:]
         return {
             'c9': c9,      
             'c12': c12,
             'label': label
         }
+    
+    def __len__(self):
+        return len(self.samples)
 
-import random
 
 class ClassificationTrainDataset(Dataset):
-    def __init__(self, backing_dataset, min_train_samples_per_class, min_val_samples_per_class, seed):
+    def __init__(self, backing_dataset, train_samples_per_class, val_samples_per_class, seed):
         self.backing_dataset = backing_dataset
-        self.min_train_samples_per_class = min_train_samples_per_class
-        self.min_val_samples_per_class = min_val_samples_per_class
+        self.min_train_samples_per_class = train_samples_per_class
+        self.min_val_samples_per_class = val_samples_per_class
 
         self.samples = []
         self.samples_by_class = {'RPH':[], 'Blast':[], 'Rust':[], 'Aphid':[]}
 
         # see if the backing dataset has enough samples
         for label, class_samples in self.backing_dataset.samples_by_class.items():
-            if len(class_samples) < min_val_samples_per_class:
+            if len(class_samples) < val_samples_per_class:
                 raise ValueError(f"Backing dataset has insufficient samples for class {label}")
 
             # random partition for train set
@@ -315,16 +320,16 @@ class ClassificationTrainDataset(Dataset):
             # make a copy to avoid modifying the backing dataset
             class_samples = class_samples.copy()
             random.shuffle(class_samples)
-            class_samples = class_samples[min_val_samples_per_class:]
+            class_samples = class_samples[val_samples_per_class:][:train_samples_per_class]
             
-            if len(class_samples) < min_train_samples_per_class:
+            if len(class_samples) < train_samples_per_class:
                 # must augment train set for this class
                 print(f"Augmenting train set for class {label}")
-                num_to_augment = min_train_samples_per_class - len(class_samples)
+                num_to_augment = train_samples_per_class - len(class_samples)
                 augmented_samples = []
                 for _ in range(num_to_augment):
                     sample = random.choice(class_samples)
-                    augmented_samples.append(self.augment_sample(sample))
+                    augmented_samples.append([self.augment_sample(sample[0]), sample[1]])
                 class_samples = class_samples + augmented_samples
             
             self.samples.extend(class_samples)
@@ -354,24 +359,27 @@ class ClassificationTrainDataset(Dataset):
     def __getitem__(self, idx):
         img, label = self.samples[idx]
         c9 = img[(3,2,1,4,5,6,7,10,11),:,:]
-        c12 = img
+        c12 = img[(3,2,1,4,5,6,7,10,11,0,8,9),:,:]
         return {
-            'c9': c9,      
+            'c9': c9,
             'c12': c12,
             'label': label
         }
+    
+    def __len__(self):
+        return len(self.samples)
 
 class ClassificationValDataset(Dataset):
-    def __init__(self, backing_dataset, min_val_samples_per_class, seed):
+    def __init__(self, backing_dataset, val_samples_per_class, seed):
         self.backing_dataset = backing_dataset
-        self.min_val_samples_per_class = min_val_samples_per_class
+        self.min_val_samples_per_class = val_samples_per_class
 
         self.samples = []
         self.samples_by_class = {'RPH':[], 'Blast':[], 'Rust':[], 'Aphid':[]}
 
         # see if the backing dataset has enough samples
         for label, class_samples in self.backing_dataset.samples_by_class.items():
-            if len(class_samples) < min_val_samples_per_class:
+            if len(class_samples) < val_samples_per_class:
                 raise ValueError(f"Backing dataset has insufficient samples for class {label}")
 
             # random partition for val set
@@ -379,7 +387,7 @@ class ClassificationValDataset(Dataset):
             # make a copy to avoid modifying the backing dataset
             class_samples = class_samples.copy()
             random.shuffle(class_samples)
-            class_samples = class_samples[:min_val_samples_per_class]
+            class_samples = class_samples[:val_samples_per_class]
             
             self.samples.extend(class_samples)
             self.samples_by_class[label] = class_samples
@@ -387,9 +395,12 @@ class ClassificationValDataset(Dataset):
     def __getitem__(self, idx):
         img, label = self.samples[idx]
         c9 = img[(3,2,1,4,5,6,7,10,11),:,:]
-        c12 = img
+        c12 = img[(3,2,1,4,5,6,7,10,11,0,8,9),:,:]
         return {
-            'c9': c9,      
+            'c9': c9,
             'c12': c12,
             'label': label
         }
+    
+    def __len__(self):
+        return len(self.samples)
