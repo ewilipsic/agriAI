@@ -179,26 +179,9 @@ def main():
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
     # ---- model ----
+    from model_spec import build_model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
-
-    # Attempt to load a full model object; fall back to state_dict
-    if 'model' in checkpoint:
-        model = checkpoint['model']
-    elif 'model_state_dict' in checkpoint:
-        # You'll need to construct the model first in this case.
-        # Adjust the import below to your ClassificationModel class.
-        raise RuntimeError(
-            'Checkpoint contains only state_dict. Please modify this script '
-            'to instantiate your model class and load the state dict, or save '
-            'the full model object into the checkpoint.')
-    else:
-        # Assume the checkpoint IS the state dict
-        raise RuntimeError(
-            'Cannot determine model from checkpoint. '
-            'Please modify this script to construct the model and load weights.')
-
-    model = model.to(device)
+    model = build_model(args.checkpoint, device=device)
 
     # ---- analyse ----
     predictions, confidences = collect_confidences(model, loader, label_minus=args.label_minus)
