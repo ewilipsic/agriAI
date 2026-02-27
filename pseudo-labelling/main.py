@@ -15,9 +15,10 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from tqdm import tqdm
-from classification_datasets import ClassificationDataset
+from classification_datasets import ClassificationDataset, ClassificationTrainDataset, ClassificationValDataset
 from s2a import Sentinel2InpaintingDataset
 from torch.utils.data import DataLoader
+from model_spec import build_model
 
 # ---------------------------------------------------------------------------
 # Lightweight dataset for pseudo-labelled samples
@@ -169,41 +170,43 @@ def _train_one_epoch(model, dataloader, criterion, optimizer, device, label_minu
 
 def train_pseudo_labelled_model(
     base_model,
-    labelled_loader,
+    train_labelled_loader,
+    val_labelled_loader,
     unlabelled_loader,
     confidence_threshold,
     num_iterations,
     num_epochs_per_iteration,
     label_minus=0,
-    learning_rate=1e-3,
+    learning_rate=1e-6,
     batch_size=16,
 ):
     """Iterative self-training with pseudo-labelling.
 
     Args:
-        base_model:       A classification model (encoder + head, no softmax).
-                          Only the classification-head parameters that have
-                          ``requires_grad=True`` will be optimised.
-        labelled_loader:  DataLoader over the *labelled* training set.
-                          Each batch must contain ``'c9'`` images and ``'label'``.
-        unlabelled_loader:
-                          DataLoader over *unlabelled* data.
-                          Each batch must contain at least ``'c9'`` images.
-        confidence_threshold:
-                          Minimum softmax confidence to accept a pseudo-label.
-        num_iterations:   Number of self-training rounds.
+        base_model:             A classification model (encoder + head, no softmax).
+                                All parameters with ``requires_grad=True`` are optimised.
+        train_labelled_loader:  DataLoader over the *labelled training* set.
+                                Concatenated with pseudo-labelled samples each iteration.
+                                Each batch must contain ``'c9'`` images and ``'label'``.
+        val_labelled_loader:    DataLoader over the *labelled validation* set.
+                                Used for evaluation and recall-based sampling ratios.
+                                Each batch must contain ``'c9'`` images and ``'label'``.
+        unlabelled_loader:      DataLoader over *unlabelled* data.
+                                Each batch must contain at least ``'c9'`` images.
+        confidence_threshold:   Minimum softmax confidence to accept a pseudo-label.
+        num_iterations:         Number of self-training rounds.
         num_epochs_per_iteration:
-                          Number of training epochs in each round.
-        label_minus:      Offset subtracted from dataset labels so they match
-                          the model's output classes (e.g. 2 when the model only
-                          distinguishes the last 2 of 4 classes).
-        learning_rate:    Learning rate for the Adam optimiser.
-        batch_size:       Batch size for the combined (labelled + pseudo) loader.
+                                Number of training epochs in each round.
+        label_minus:            Offset subtracted from dataset labels so they match
+                                the model's output classes (e.g. 2 when the model only
+                                distinguishes the last 2 of 4 classes).
+        learning_rate:          Learning rate for the Adam optimiser.
+        batch_size:             Batch size for the combined (train + pseudo) loader.
 
     Returns:
         model:            The trained model (modified in-place).
         iteration_cms:    List of confusion matrices, one per iteration,
-                          evaluated on the labelled loader after training.
+                          evaluated on ``val_labelled_loader`` after training.
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = base_model.to(device)
@@ -216,9 +219,9 @@ def train_pseudo_labelled_model(
         print(f'{"="*60}')
 
         # ------------------------------------------------------------------
-        # 1. Evaluate current model on labelled data → class-bias
+        # 1. Evaluate current model on val set → class-bias
         # ------------------------------------------------------------------
-        cm = evaluate_model(model, labelled_loader, label_minus=label_minus)
+        cm = evaluate_model(model, val_labelled_loader, label_minus=label_minus)
         print('Confusion matrix on labelled set:')
         print(cm)
 
@@ -308,9 +311,10 @@ def train_pseudo_labelled_model(
         # 5. Build combined dataset and retrain
         # ------------------------------------------------------------------
         pseudo_dataset = PseudoLabelledDataset(selected_images, selected_labels)
-        combined_dataset = ConcatDataset([labelled_loader.dataset, pseudo_dataset])
+        combined_dataset = ConcatDataset([train_labelled_loader.dataset, pseudo_dataset])
         combined_loader = DataLoader(
-            combined_dataset,
+            #combined_dataset,
+            train_labelled_loader.dataset, # FOR DEBUGGING
             batch_size=batch_size,
             shuffle=True,
             num_workers=0,
@@ -333,7 +337,7 @@ def train_pseudo_labelled_model(
         # ------------------------------------------------------------------
         # 6. Re-evaluate after training
         # ------------------------------------------------------------------
-        cm_after = evaluate_model(model, labelled_loader, label_minus=label_minus)
+        cm_after = evaluate_model(model, val_labelled_loader, label_minus=label_minus)
         iteration_cms.append(cm_after)
         print('Confusion matrix after retraining:')
         print(cm_after)
@@ -341,46 +345,60 @@ def train_pseudo_labelled_model(
     return model, iteration_cms
 
 if __name__ == '__main__':
-    # load a model (satlas/satlas_ensemble_classification_checkpoints9/old_good.pth) and actually run the pseudo-labelling algorithm
-    model = torch.load('../satlas/satlas_ensemble_classification_checkpoints9/old_good.pth')
-    
-    # load the labelled and unlabelled datasets
-    labelled_dataset = ClassificationDataset('../kaggle')
+    # load a model and actually run the pseudo-labelling algorithm
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
+    model = build_model('../satlas/satlas_ensemble_classification_checkpoints9/old_good.pth', device=device)
+
+    # load the full labelled dataset into memory
+    labelled_dataset = ClassificationDataset('../kaggle', target_size=(256, 256))
+
+    # split into train and val subsets
+    # args: (backing_dataset, train_samples_per_class, val_samples_per_class, seed)
+    train_labelled_dataset = ClassificationTrainDataset(labelled_dataset, 100, 20, seed=42)
+    val_labelled_dataset   = ClassificationValDataset(labelled_dataset, 20, seed=42)
+
     unlabelled_dataset = Sentinel2InpaintingDataset(
         '../s2a',
         format='satlas',
-        limit_samples=2000,
+        target_size=(256, 256),
+        #limit_samples=2000,
+        limit_samples=100, # FOR DEBUGGING
     )
-    
+
     # create dataloaders
-    labelled_loader = DataLoader(
-        labelled_dataset,
-        batch_size=8,
+    train_labelled_loader = DataLoader(
+        train_labelled_dataset,
+        batch_size=16,
+        shuffle=True,
+        num_workers=0,  # already loaded in memory
+    )
+    val_labelled_loader = DataLoader(
+        val_labelled_dataset,
+        batch_size=16,
         shuffle=False,
-        num_workers=0, # already loaded in memory
+        num_workers=0,  # already loaded in memory
     )
     unlabelled_loader = DataLoader(
         unlabelled_dataset,
-        batch_size=8,
+        batch_size=16,
         shuffle=False,
         num_workers=1,
     )
-    
+
     # run the pseudo-labelling algorithm
-    model, iteration_cms = pseudo_labelling(
+    model, iteration_cms = train_pseudo_labelled_model(
         model,
-        labelled_loader,
+        train_labelled_loader,
+        val_labelled_loader,
         unlabelled_loader,
-        num_iterations=10,
-        confidence_threshold=0.7,
-        stratify_by_recall=True,
+        confidence_threshold=0.9,
+        num_iterations=5,
         num_epochs_per_iteration=5,
-        learning_rate=0.001,
     )
-    
+
     # save the model
-    torch.save(model, 'pseudo_labelled_model.pth')
-    
+    torch.save(model.state_dict(), 'pl_model.pth')
+
     # save the iteration confusion matrices
-    np.save('iteration_cms.npy', iteration_cms)
-    
+    np.save('pl_iteration_cms.npy', iteration_cms)

@@ -196,11 +196,3 @@ class Sentinel2InpaintingDataset(Dataset):
             if self.return_index:
                 result['idx'] = idx
             return result
-
-    def load_sample_by_index(self, idx):
-        """Return a pre-processed c9 numpy array for the sample at *idx*."""
-        band_paths = self.samples[idx]
-        img = self.load_multispectral_image(band_paths)
-        img = self.normalize_satlas(img)
-        c9 = img[(3, 2, 1, 4, 5, 6, 7, 10, 11), :, :]
-        return c9
