@@ -3,6 +3,7 @@
 /ICPR02
 /archive
 **/__pycache__
+**/.ipynb_checkpoints
 sassl/SASSL_checkpoints
 sassl/SASSL_classification_checkpoints
 autoencoder/checkpoints
