@@ -302,7 +302,7 @@ class ClassificationDataset(Dataset):
 
 
 class ClassificationTrainDataset(Dataset):
-    def __init__(self, backing_dataset, train_samples_per_class, val_samples_per_class, seed):
+    def __init__(self, backing_dataset, train_samples_per_class, val_samples_per_class, seed, augment = True):
         self.backing_dataset = backing_dataset
         self.min_train_samples_per_class = train_samples_per_class
         self.min_val_samples_per_class = val_samples_per_class
@@ -322,7 +322,7 @@ class ClassificationTrainDataset(Dataset):
             random.shuffle(class_samples)
             class_samples = class_samples[val_samples_per_class:][:train_samples_per_class]
             
-            if len(class_samples) < train_samples_per_class:
+            if augment and len(class_samples) < train_samples_per_class:
                 # must augment train set for this class
                 print(f"Augmenting train set for class {label}")
                 num_to_augment = train_samples_per_class - len(class_samples)
